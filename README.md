@@ -93,3 +93,4 @@ If SwiftPM fails with `Invalid manifest` or `redefinition of module 'SwiftBridgi
 ## License
 
 GPL-3.0, see [LICENSE](LICENSE).
+
