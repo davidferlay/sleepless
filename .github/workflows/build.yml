@@ -1,0 +1,61 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'App version, for example 0.1.0 or 0.0.1-rc'
+        required: true
+        type: string
+      channel:
+        description: 'release, rc or dev'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ inputs.version }} (${{ inputs.channel }})
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      CHANNEL: ${{ inputs.channel }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      EXPECTED_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: /usr/bin/swift --version
+
+      - name: Check version format
+        run: |
+          if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Invalid version '$VERSION' (expected for example 0.1.0 or 0.0.1-rc)"
+            exit 1
+          fi
+
+      - name: Build universal app
+        run: make app
+
+      - name: Validate bundle
+        run: make validate
+
+      - name: Smoke test
+        run: make smoke
+
+      - name: Package
+        run: make package
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: sleepless-${{ inputs.version }}
+          path: |
+            build/Sleepless-${{ inputs.version }}.dmg
+            build/Sleepless-${{ inputs.version }}.zip
+            build/SHA256SUMS.txt
+          if-no-files-found: error

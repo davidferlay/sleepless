@@ -1,0 +1,76 @@
+name: Prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'dev recreates v0.0.0, rc recreates v0.0.1-rc'
+        required: true
+        type: choice
+        options:
+          - dev
+          - rc
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          case "$CHANNEL" in
+            dev) VERSION=0.0.0 ;;
+            rc) VERSION=0.0.1-rc ;;
+            *) echo "::error::Unknown channel '$CHANNEL'"; exit 1 ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ inputs.channel }}
+
+  # Replaces the release only after a successful build, so a failed build never leaves it missing.
+  publish:
+    name: Recreate prerelease
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          name: sleepless-${{ needs.version.outputs.version }}
+          path: dist
+
+      - name: Replace release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+          fi
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" >/dev/null 2>&1 || true
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Sleepless $CHANNEL build (${GITHUB_SHA:0:7})" \
+            --notes "Automated $CHANNEL build of commit $GITHUB_SHA. Ad-hoc signed: see the README for the Gatekeeper step."

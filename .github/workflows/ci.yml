@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'Package.swift'
+      - 'Sources/**'
+      - 'Tests/**'
+      - 'Resources/**'
+      - 'Scripts/**'
+      - 'Makefile'
+      - '.swift-format'
+      - '.githooks/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Package.swift'
+      - 'Sources/**'
+      - 'Tests/**'
+      - 'Resources/**'
+      - 'Scripts/**'
+      - 'Makefile'
+      - '.swift-format'
+      - '.githooks/**'
+      - '.github/workflows/**'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: |
+          /usr/bin/xcodebuild -version
+          /usr/bin/swift --version
+
+      # Not preinstalled on the macOS runner images.
+      - name: Install shellcheck and actionlint
+        run: brew install shellcheck actionlint
+
+      - name: Lint
+        run: make lint
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: /usr/bin/swift --version
+
+      - name: Run unit tests with coverage
+        run: make coverage
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: /usr/bin/swift --version
+
+      - name: Run integration tests
+        run: make test-integration
+
+  app:
+    name: App (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-latest: current macOS on Apple silicon. macos-15: oldest macOS still offered.
+        # macos-15-intel: runs the x86_64 slice of the universal binary.
+        runner: [macos-latest, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    env:
+      CHANNEL: dev
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Show system and toolchain
+        run: |
+          /usr/bin/sw_vers
+          /usr/bin/uname -m
+          /usr/bin/swift --version
+
+      - name: Build universal app
+        run: make app
+
+      - name: Validate bundle
+        run: make validate
+
+      - name: Smoke test
+        run: make smoke
+
+      - name: End-to-end playback test
+        run: make e2e
+
+      - name: Zip app
+        if: matrix.runner == 'macos-latest'
+        run: /usr/bin/ditto -c -k --keepParent build/Sleepless.app "build/Sleepless-${GITHUB_SHA}.zip"
+
+      - name: Upload app
+        if: matrix.runner == 'macos-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: Sleepless-${{ github.sha }}
+          path: build/Sleepless-${{ github.sha }}.zip
+          retention-days: 7
+          if-no-files-found: error

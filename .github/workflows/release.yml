@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (semver, for example 0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${INPUT_VERSION:-${TAG_NAME#v}}"
+          echo "Version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Run unit tests
+        run: make test
+
+  build:
+    name: Build
+    needs: [version, unit-tests]
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      channel: release
+
+  # Only for a published release; a manual run just leaves the packages as workflow artifacts.
+  publish:
+    name: Publish release
+    needs: [version, build]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          name: sleepless-${{ needs.version.outputs.version }}
+          path: dist
+
+      # Uploading assets can leave the release drafted; publish it explicitly.
+      - name: Upload assets and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG_NAME" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG_NAME" --draft=false --repo "$GITHUB_REPOSITORY"

@@ -1,0 +1,22 @@
+#!/bin/sh
+# Pre-commit: swift format lint on staged Swift files, then a debug build.
+# Enable once per clone with: make install-hooks
+set -eu
+
+files=$(/usr/bin/git diff --cached --name-only --diff-filter=ACM -- '*.swift')
+if [ -n "$files" ]; then
+    echo "Running swift format lint on staged Swift files..."
+    # shellcheck disable=SC2086 # one path per word; repository paths contain no spaces
+    if ! /usr/bin/swift format lint --strict $files; then
+        echo "swift format lint failed. Run 'make format' and stage the changes." >&2
+        exit 1
+    fi
+fi
+
+echo "Running swift build..."
+if ! /usr/bin/swift build; then
+    echo "swift build failed. Fix the errors before committing." >&2
+    exit 1
+fi
+
+echo "Pre-commit checks passed."
