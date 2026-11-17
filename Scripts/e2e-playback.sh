@@ -29,7 +29,7 @@ has_assertion() {
         /usr/bin/grep -q -F "\"$ASSERTION_NAME\""
 }
 
-# shellcheck disable=SC2317 # called indirectly through wait_until
+# shellcheck disable=SC2317,SC2329 # called indirectly through wait_until
 has_no_assertion() {
     ! has_assertion
 }
@@ -78,7 +78,7 @@ EOF
 "$BINARY" -startDelay "$START_DELAY" -stopDelay "$STOP_DELAY" &
 pid=$!
 player=""
-# shellcheck disable=SC2317 # called by the EXIT trap
+# shellcheck disable=SC2317,SC2329 # called by the EXIT trap
 cleanup() {
     if [ -n "$player" ]; then
         kill "$player" 2>/dev/null || true
