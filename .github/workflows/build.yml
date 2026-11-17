@@ -11,6 +11,23 @@ on:
         description: 'release, rc or dev'
         required: true
         type: string
+  # Manual run: builds and packages, keeps the files as workflow artifacts, publishes nothing.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version, for example 0.1.0 or 0.0.1-rc'
+        required: true
+        type: string
+        default: '0.0.0'
+      channel:
+        description: 'Build channel shown in the app tooltip'
+        required: true
+        type: choice
+        options:
+          - dev
+          - rc
+          - release
+        default: dev
 
 permissions:
   contents: read

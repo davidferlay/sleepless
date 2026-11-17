@@ -168,8 +168,8 @@ Unit tests use a `ManualScheduler` whose `advance(by:)` fires due actions, and f
 
 | Workflow | Trigger | Jobs |
 |-|-|-|
-| `ci.yml` | Push to any branch, pull request to `main`, path filtered, concurrency with cancel in progress | `lint`, `unit-tests` (with coverage summary), `integration-tests`, `app` (universal build, validate, smoke, e2e; also on the oldest available macOS runner; uploads the zip as an artifact for 7 days) |
-| `build.yml` | `workflow_call` with `version`, `channel` | Build, validate, package, upload workflow artifact |
+| `ci.yml` | Push to any branch, pull request to `main`, path filtered, or manual; concurrency with cancel in progress | `lint`, `unit-tests` (with coverage summary), `integration-tests`, `app` (universal build, validate, smoke, e2e; also on the oldest available macOS runner; uploads the zip as an artifact for 7 days) |
+| `build.yml` | `workflow_call` with `version`, `channel`, or manual with the same inputs (artifacts only, nothing published) | Build, validate, package, upload workflow artifact |
 | `release.yml` | Release published, or manual with a version | Unit tests, `build.yml`, upload assets, publish the release (undraft) |
 | `prerelease.yml` | Manual with `channel` (`dev` or `rc`) | Recreate `v0.0.0` (dev) or `v0.0.1-rc` (RC) prerelease at the current commit, `build.yml`, upload assets |
 

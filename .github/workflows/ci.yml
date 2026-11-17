@@ -25,6 +25,7 @@ on:
       - '.swift-format'
       - '.githooks/**'
       - '.github/workflows/**'
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}

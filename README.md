@@ -86,9 +86,12 @@ If SwiftPM fails with `Invalid manifest` or `redefinition of module 'SwiftBridgi
 
 | Workflow | Trigger | Result |
 |-|-|-|
-| CI | Push, pull request | Lint, unit, integration, and app tests on macOS 26 and 15 (Apple silicon and Intel) |
-| Release | Publishing a GitHub release `vX.Y.Z` | DMG, zip and checksums attached to the release |
+| CI | Push, pull request, or manual | Lint, unit, integration, and app tests on macOS 26 and 15 (Apple silicon and Intel) |
+| Build | Manual (version, channel), or called by Release and Prerelease | DMG, zip and checksums as workflow artifacts; publishes nothing |
+| Release | Publishing a GitHub release `vX.Y.Z`, or manual (version) | DMG, zip and checksums attached to the release; a manual run only keeps them as workflow artifacts |
 | Prerelease | Manual, channel `dev` or `rc` | Recreates the `v0.0.0` or `v0.0.1-rc` prerelease from the current commit |
+
+Every workflow can be started by hand from the Actions tab (Run workflow).
 
 ## License
 
