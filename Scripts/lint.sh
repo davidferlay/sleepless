@@ -1,6 +1,6 @@
 #!/bin/sh
 # Static checks: Swift formatting, Info.plist, shell scripts, workflows.
-# shellcheck and actionlint are optional locally and required in CI (CI=true).
+# The shellcheck and actionlint checks are optional locally and required in CI (CI=true).
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
